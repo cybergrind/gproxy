@@ -21,9 +21,11 @@ public class GPSMock extends Service {
 
 
 
+    private final double defaultAlt = 220;
+
     protected long prevTS;
-    protected double lat, lng, alt;
-    protected float acc, bear, speed;
+    protected static double lat, lng, alt, nextAlt;
+    protected static float acc, bear, speed;
 
     protected Update target;
 
@@ -31,7 +33,8 @@ public class GPSMock extends Service {
         prevTS = System.currentTimeMillis();
         lat = 53.86783;
         lng = 27.65683;
-        alt = 213.0;
+        alt = defaultAlt;
+        nextAlt = alt;
         acc = 5.00f;
         bear = 0.0f;
         speed = 0.0f;
@@ -144,6 +147,7 @@ public class GPSMock extends Service {
                 location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
                 location.setLatitude(lat);
                 location.setLongitude(lng);
+                location.setAltitude(nextAlt);
                 location.setSpeed(speed);
                 location.setBearing(bear);
                 location.setAccuracy(acc);
@@ -195,6 +199,7 @@ public class GPSMock extends Service {
         lat = Math.toDegrees(latR);
         lng = Math.toDegrees(lngR);
         speed = currSpeed;
+        nextAlt = (rand.nextFloat() > 0.5 ? -1 : 1) * 10*rand.nextFloat() + alt;
         prevTS = System.currentTimeMillis();
     }
 
