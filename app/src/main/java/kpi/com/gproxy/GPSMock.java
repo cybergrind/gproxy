@@ -6,9 +6,7 @@ import android.content.Intent;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
@@ -22,13 +20,15 @@ public class GPSMock extends Service {
 
 
     protected double lat, lng, alt;
-    protected float acc;
+    protected float acc, bear, speed;
 
     {
-        acc = 5.00f;
         lat = 53.86783;
         lng = 27.65683;
         alt = 213.0;
+        acc = 5.00f;
+        bear = 0.0f;
+        speed = 0.0f;
     }
 
     public GPSMock() {
@@ -82,7 +82,7 @@ public class GPSMock extends Service {
         public void run() {
             active = true;
             while (active && !this.isInterrupted()) {
-                Update up = new Update(53.86783, lng + 0.0001, 213.0, 5.0f, 2.0f, 0.0f);
+                Update up = new Update(lat-0.0001, lng + 0.0001, 213.0, 5.0f, 2.0f, 0.0f);
                 Message msg = Message.obtain(updateHandler, 0, up);
                 Log.d(TAG, "send to target");
                 msg.sendToTarget();
@@ -109,10 +109,27 @@ public class GPSMock extends Service {
                 public void handleMessage(Message msg) {
                     Log.d("UpdateHandler", "Got message update "+msg.obj.toString());
                     Update up = (Update) msg.obj;
+                    bear = bearing(lat, lng, up.lat, up.lng);
+                    speed = calculateSpeed(up);
+                    lat = up.lat;
                     lng = up.lng;
                     super.handleMessage(msg);
                 }
             };
+        }
+
+        float calculateSpeed(Update up) {
+            return 0.0f;
+        }
+
+        float bearing(double lat1, double lng1, double lat2, double lng2) {
+            double latitude1 = Math.toRadians(lat1);
+            double latitude2 = Math.toRadians(lat2);
+            double longDiff= Math.toRadians(lng2 - lng1);
+            double y= Math.sin(longDiff)*Math.cos(latitude2);
+            double x=Math.cos(latitude1)*Math.sin(latitude2)-Math.sin(latitude1)*Math.cos(latitude2)*Math.cos(longDiff);
+
+            return (float) (Math.toDegrees(Math.atan2(y, x))+360)%360;
         }
     }
 
@@ -136,8 +153,8 @@ public class GPSMock extends Service {
                 location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
                 location.setLatitude(lat);
                 location.setLongitude(lng);
-                location.setSpeed(2.0f);
-                location.setBearing(2.0f);
+                location.setSpeed(speed);
+                location.setBearing(bear);
                 location.setAccuracy(acc);
                 manager.setTestProviderLocation(PROVIDER, location);
                 Log.d(TAG, "Update test location "+this.isInterrupted());
@@ -154,7 +171,6 @@ public class GPSMock extends Service {
             manager.setTestProviderEnabled(PROVIDER, false);
             manager.removeTestProvider(PROVIDER);
         }
-
 
     }
 }
