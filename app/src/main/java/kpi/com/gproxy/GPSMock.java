@@ -69,7 +69,7 @@ public class GPSMock extends Service {
             mockThread.start();
 
             Log.d(TAG, "Start listener");
-            listener = new TCPListener();
+            listener = new TCPListener(this);
             listener.start();
         }
         return super.onStartCommand(intent, flags, startId);
@@ -81,30 +81,6 @@ public class GPSMock extends Service {
             mockThread.interrupt();
             updateThread.interrupt();
             listener.interrupt();
-        }
-    }
-
-    class TCPListener extends Thread {
-
-        public boolean active;
-        public static final String TAG = "TCPListener";
-
-        @Override
-        public void run() {
-            active = true;
-            while (active && !this.isInterrupted()) {
-                Update up = new Update(lat-0.0001, lng + 0.0001, 213.0, 5.0f, 2.0f, 0.0f);
-                Message msg = Message.obtain(updateHandler, 0, up);
-                Log.d(TAG, "send to target");
-                msg.sendToTarget();
-
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    active = false;
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
