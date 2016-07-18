@@ -11,6 +11,8 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.util.Random;
+
 public class GPSMock extends Service {
     public static final String TAG = "GPSMock";
     public Handler updateHandler;
@@ -23,6 +25,8 @@ public class GPSMock extends Service {
     protected double lat, lng, alt;
     protected float acc, bear, speed;
 
+    protected Update target;
+
     {
         prevTS = System.currentTimeMillis();
         lat = 53.86783;
@@ -31,6 +35,8 @@ public class GPSMock extends Service {
         acc = 5.00f;
         bear = 0.0f;
         speed = 0.0f;
+
+        target = new Update(lat, lng, alt, acc, bear, speed);
     }
 
     public GPSMock() {
@@ -110,43 +116,9 @@ public class GPSMock extends Service {
                 @Override
                 public void handleMessage(Message msg) {
                     Log.d("UpdateHandler", "Got message update "+msg.obj.toString());
-                    Update up = (Update) msg.obj;
-                    bear = bearing(lat, lng, up.lat, up.lng);
-                    speed = calculateSpeed(up);
-                    lat = up.lat;
-                    lng = up.lng;
-                    super.handleMessage(msg);
+                    target = (Update) msg.obj;
                 }
             };
-        }
-
-        float calculateSpeed(Update up) {
-            double dist = calculateDistance(lat, lng, up.lat, up.lng);
-            double ts = System.currentTimeMillis();
-            double speed = dist / (ts - prevTS) * 1000;
-            prevTS = System.currentTimeMillis();
-            return (float) speed;
-        }
-
-        double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
-            double dLat = Math.toRadians(lat2 - lat1);
-            double dLon = Math.toRadians(lng2 - lng1);
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                    + Math.cos(Math.toRadians(lat1))
-                    * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
-                    * Math.sin(dLon / 2);
-            double c = 2 * Math.asin(Math.sqrt(a));
-            return 6371000 * c;
-        }
-
-        float bearing(double lat1, double lng1, double lat2, double lng2) {
-            double latitude1 = Math.toRadians(lat1);
-            double latitude2 = Math.toRadians(lat2);
-            double longDiff= Math.toRadians(lng2 - lng1);
-            double y= Math.sin(longDiff)*Math.cos(latitude2);
-            double x=Math.cos(latitude1)*Math.sin(latitude2)-Math.sin(latitude1)*Math.cos(latitude2)*Math.cos(longDiff);
-
-            return (float) (Math.toDegrees(Math.atan2(y, x))+360)%360;
         }
     }
 
@@ -165,6 +137,8 @@ public class GPSMock extends Service {
             manager.setTestProviderEnabled(PROVIDER, true);
 
             while (active && !this.isInterrupted()) {
+                recalculate();
+
                 Location location = new Location(PROVIDER);
                 location.setTime(System.currentTimeMillis());
                 location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
@@ -183,11 +157,74 @@ public class GPSMock extends Service {
                     e.printStackTrace();
                 }
             }
-
-
             manager.setTestProviderEnabled(PROVIDER, false);
             manager.removeTestProvider(PROVIDER);
         }
 
+    }
+
+
+    private void recalculate() {
+        Long interval = (System.currentTimeMillis() - prevTS);
+        bear = bearing(lat, lng, target.lat, target.lng);
+        updatePosition(bear, interval);
+    }
+
+    private Random rand;
+    {
+        rand = new Random();
+    }
+
+    private void updatePosition(float bearing, long interval) {
+        float currSpeed = (float) ((1.8 - 0.9) * rand.nextFloat() + 0.9);
+        acc = (float) ( (13.0 - 1.3) * rand.nextFloat() + 1.3);
+        float distance = currSpeed*interval/1000;
+        Log.d(TAG, "Distance: " + distance);
+        float vDistance = distance / 6371000;
+
+        double lat1R = Math.toRadians(lat);
+        double lng1R = Math.toRadians(lng);
+        double bearR = Math.toRadians(bearing);
+
+        double latR = Math.asin( Math.sin(lat1R)*Math.cos(vDistance) +
+                Math.cos(lat1R)*Math.sin(vDistance)*Math.cos(bearR));
+
+        double lngR = lng1R + Math.atan2(Math.sin(bearR)*Math.sin(vDistance)*Math.cos(lat1R),
+                Math.cos(vDistance)-Math.sin(lat1R)*Math.sin(latR));
+
+        lat = Math.toDegrees(latR);
+        lng = Math.toDegrees(lngR);
+        speed = currSpeed;
+        prevTS = System.currentTimeMillis();
+    }
+
+
+    float calculateSpeed(Update up) {
+        double dist = calculateDistance(lat, lng, up.lat, up.lng);
+        double ts = System.currentTimeMillis();
+        double speed = dist / (ts - prevTS) * 1000;
+        prevTS = System.currentTimeMillis();
+        return (float) speed;
+    }
+
+    double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
+                * Math.sin(dLon / 2);
+        double c = 2 * Math.asin(Math.sqrt(a));
+        return 6371000 * c;
+    }
+
+    float bearing(double lat1, double lng1, double lat2, double lng2) {
+        double latitude1 = Math.toRadians(lat1);
+        double latitude2 = Math.toRadians(lat2);
+        double longDiff= Math.toRadians(lng2 - lng1);
+        double y = Math.sin(longDiff)*Math.cos(latitude2);
+        double x = Math.cos(latitude1)*Math.sin(latitude2)-Math.sin(latitude1)*Math.cos(latitude2)*Math.cos(longDiff);
+
+        return (float) (Math.toDegrees(Math.atan2(y, x))+360)%360;
     }
 }
