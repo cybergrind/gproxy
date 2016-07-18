@@ -19,10 +19,12 @@ public class GPSMock extends Service {
 
 
 
+    protected long prevTS;
     protected double lat, lng, alt;
     protected float acc, bear, speed;
 
     {
+        prevTS = System.currentTimeMillis();
         lat = 53.86783;
         lng = 27.65683;
         alt = 213.0;
@@ -119,7 +121,22 @@ public class GPSMock extends Service {
         }
 
         float calculateSpeed(Update up) {
-            return 0.0f;
+            double dist = calculateDistance(lat, lng, up.lat, up.lng);
+            double ts = System.currentTimeMillis();
+            double speed = dist / (ts - prevTS) * 1000;
+            prevTS = System.currentTimeMillis();
+            return (float) speed;
+        }
+
+        double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+            double dLat = Math.toRadians(lat2 - lat1);
+            double dLon = Math.toRadians(lng2 - lng1);
+            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                    + Math.cos(Math.toRadians(lat1))
+                    * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2)
+                    * Math.sin(dLon / 2);
+            double c = 2 * Math.asin(Math.sqrt(a));
+            return 6371000 * c;
         }
 
         float bearing(double lat1, double lng1, double lat2, double lng2) {
@@ -157,7 +174,7 @@ public class GPSMock extends Service {
                 location.setBearing(bear);
                 location.setAccuracy(acc);
                 manager.setTestProviderLocation(PROVIDER, location);
-                Log.d(TAG, "Update test location "+this.isInterrupted());
+                Log.d(TAG, "Update test location "+location.toString());
 
                 try {
                     Thread.sleep(500);
