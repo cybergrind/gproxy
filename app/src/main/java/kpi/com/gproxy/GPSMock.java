@@ -14,6 +14,7 @@ import android.util.Log;
 
 import java.util.Random;
 
+
 public class GPSMock extends Service {
     public static final String TAG = "GPSMock";
     public Handler updateHandler;
