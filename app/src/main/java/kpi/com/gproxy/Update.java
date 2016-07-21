@@ -1,10 +1,14 @@
 package kpi.com.gproxy;
 
+import android.location.Location;
+
+import java.io.Serializable;
+
 /**
  * Created by kpi on 7/18/16.
  */
 
-public class Update {
+public class Update implements Serializable {
     public double lat, lng, alt;
     public float acc, speed, bearing;
 
@@ -15,6 +19,15 @@ public class Update {
         this.acc = acc;
         this.speed = speed;
         this.bearing = bearing;
+    }
+
+    public Update(Location l) {
+        this.lat = l.getLatitude();
+        this.lng = l.getLongitude();
+        this.alt = l.getAltitude();
+        this.acc = l.getAccuracy();
+        this.speed = l.getSpeed();
+        this.bearing = l.getBearing();
     }
 
     @Override

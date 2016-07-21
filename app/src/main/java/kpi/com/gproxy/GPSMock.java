@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.SystemClock;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.util.Random;
@@ -128,6 +129,7 @@ public class GPSMock extends Service {
                 location.setBearing(bear);
                 location.setAccuracy(acc);
                 manager.setTestProviderLocation(PROVIDER, location);
+                bcast(location);
                 Log.d(TAG, "Update test location "+location.toString());
 
                 try {
@@ -141,6 +143,12 @@ public class GPSMock extends Service {
             manager.removeTestProvider(PROVIDER);
         }
 
+    }
+
+    private void bcast(Location l) {
+        Intent i = new Intent("location");
+        i.putExtra("location", new Update(l));
+        LocalBroadcastManager.getInstance(this).sendBroadcast(i);
     }
 
 
