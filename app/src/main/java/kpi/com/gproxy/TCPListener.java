@@ -101,7 +101,7 @@ class TCPListener extends Thread {
     }
 
     public void locationUpdate(Update location) {
-        sendMessage(new RpcMessage("location_update", location));
+        sendMessage(new RpcMessage("locationUpdate", location));
     }
 
     LocationReceiver locationReceiver;
@@ -115,47 +115,14 @@ class TCPListener extends Thread {
                 .registerReceiver(locationReceiver, new IntentFilter("location"));
 
         reconnect();
+
         while (active && !this.isInterrupted()) {
             if (currLocation != null && currLocation != prevLocation){
                 locationUpdate(currLocation);
                 prevLocation = currLocation;
             }
 
-            try {
-                Log.d(TAG, "Socket connected: " + sock.isConnected());
-                if (!sock.isConnected()){
-                    reconnect();
-                }
-                ByteBuffer buff = ByteBuffer.allocate(2048);
-                int bytesRead = sock.read(buff);
-                buff.flip();
-                String s = new String(StandardCharsets.UTF_8.decode(buff).array(),
-                        0, buff.position());
-
-                if (bytesRead > 0) {
-                    lastAck = System.currentTimeMillis();
-                    Gson g = new Gson();
-                    Log.i(TAG, "Read bytes " + bytesRead);
-                    Log.i(TAG, String.format("Bytes: %s", s));
-                    try {
-                        RpcMessage msg = g.fromJson(s, RpcMessage.class);
-                        Log.i(TAG, "Got message: " + msg.type);
-                    } catch (JsonSyntaxException e) {
-
-                    }
-                } else if (System.currentTimeMillis() - lastAck > HEARTBEAT) {
-                    reconnect();
-                }
-            } catch (IOException e) {
-                reconnect();
-                e.printStackTrace();
-            }
-
-
-            Update up = new Update(GPSMock.lat - 0.0001, GPSMock.lng + 0.0001, 213.0, 5.0f, 2.0f, 0.0f);
-            Message msg = Message.obtain(gpsMock.updateHandler, 0, up);
-            Log.d(TAG, "send to target");
-            msg.sendToTarget();
+            readFromServer();
 
             try {
                 Thread.sleep(3000);
@@ -167,5 +134,56 @@ class TCPListener extends Thread {
 
         sockClose();
         LocalBroadcastManager.getInstance(gpsMock).unregisterReceiver(locationReceiver);
+    }
+
+    private void sendUpdate(Update up) {
+        Message msg = Message.obtain(gpsMock.updateHandler, 0, up);
+        Log.d(TAG, "send to target");
+        msg.sendToTarget();
+    }
+
+    private void processMsg(RpcMessage msg) {
+        switch (msg.msgType) {
+            case "targetUpdate":
+                sendUpdate(msg.location);
+                break;
+            case "ack":
+                break;
+            default:
+                Log.w(TAG, "Unknown message type: " + msg.msgType);
+        }
+    }
+
+    private void readFromServer() {
+        try {
+            if (!sock.isConnected()){
+                reconnect();
+            }
+            ByteBuffer buff = ByteBuffer.allocate(2048);
+            int bytesRead = sock.read(buff);
+            buff.flip();
+            String s = new String(StandardCharsets.UTF_8.decode(buff).array(),
+                    0, buff.position());
+
+            if (bytesRead > 0) {
+                lastAck = System.currentTimeMillis();
+                Gson g = new Gson();
+                try {
+                    for (String i: s.split("\n")){
+                        RpcMessage msg = g.fromJson(i, RpcMessage.class);
+                        Log.i(TAG, "Got message: " + i);
+                        processMsg(msg);
+                    }
+
+                } catch (JsonSyntaxException e) {
+                    Log.w(TAG, "Cannot parse msg: " + s);
+                }
+            } else if (System.currentTimeMillis() - lastAck > HEARTBEAT) {
+                reconnect();
+            }
+        } catch (IOException e) {
+            reconnect();
+            e.printStackTrace();
+        }
     }
 }
