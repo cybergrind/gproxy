@@ -34,6 +34,7 @@ class TCPListener extends Thread {
 
     public static final String HOST = "192.168.88.33";
     public static final int PORT = 16888;
+    public static final int HEARTBEAT = 6000;
     private GPSMock gpsMock;
     public boolean active;
     public static final String TAG = "TCPListener";
@@ -47,11 +48,13 @@ class TCPListener extends Thread {
     private SocketChannel sock;
 
     private void reconnect() {
+        Log.i(TAG, "Call reconnect");
         sockClose();
         while (active) {
             try {
                 sock = SocketChannel.open(new InetSocketAddress(HOST, PORT));
                 sock.configureBlocking(false);
+                lastAck = System.currentTimeMillis();
                 return;
             } catch (IOException e) {
                 try {
@@ -101,6 +104,7 @@ class TCPListener extends Thread {
     }
 
     LocationReceiver locationReceiver;
+    Long lastAck;
 
     @Override
     public void run() {
@@ -117,6 +121,7 @@ class TCPListener extends Thread {
             }
 
             try {
+                Log.d(TAG, "Socket connected: " + sock.isConnected());
                 if (!sock.isConnected()){
                     reconnect();
                 }
@@ -127,11 +132,14 @@ class TCPListener extends Thread {
                         0, buff.position());
 
                 if (bytesRead > 0) {
+                    lastAck = System.currentTimeMillis();
                     Gson g = new Gson();
                     Log.i(TAG, "Read bytes " + bytesRead);
                     Log.i(TAG, String.format("Bytes: %s", s));
                     RpcMessage msg = g.fromJson(s, RpcMessage.class);
                     Log.i(TAG, "Got message: " + msg.type);
+                } else if (System.currentTimeMillis() - lastAck > HEARTBEAT) {
+                    reconnect();
                 }
             } catch (IOException e) {
                 reconnect();
