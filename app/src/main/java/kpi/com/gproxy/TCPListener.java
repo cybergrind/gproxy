@@ -11,6 +11,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 
 import java.io.CharArrayReader;
 import java.io.IOException;
@@ -136,8 +137,12 @@ class TCPListener extends Thread {
                     Gson g = new Gson();
                     Log.i(TAG, "Read bytes " + bytesRead);
                     Log.i(TAG, String.format("Bytes: %s", s));
-                    RpcMessage msg = g.fromJson(s, RpcMessage.class);
-                    Log.i(TAG, "Got message: " + msg.type);
+                    try {
+                        RpcMessage msg = g.fromJson(s, RpcMessage.class);
+                        Log.i(TAG, "Got message: " + msg.type);
+                    } catch (JsonSyntaxException e) {
+
+                    }
                 } else if (System.currentTimeMillis() - lastAck > HEARTBEAT) {
                     reconnect();
                 }
