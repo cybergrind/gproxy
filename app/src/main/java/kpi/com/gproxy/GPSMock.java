@@ -131,6 +131,8 @@ public class GPSMock extends Service {
                 location.setAccuracy(acc);
                 manager.setTestProviderLocation(PROVIDER, location);
                 bcast(location);
+                RpcMessage rpcMessage = new RpcMessage("test", null);
+                Log.d(TAG, "GENERATE: "+rpcMessage);
                 Log.d(TAG, "Update test location "+location.toString());
 
                 try {
@@ -154,9 +156,12 @@ public class GPSMock extends Service {
 
 
     private void recalculate() {
-        Long interval = (System.currentTimeMillis() - prevTS);
-        bear = bearing(lat, lng, target.lat, target.lng);
-        updatePosition(bear, interval);
+        double dist = calculateDistance(lat, lng, target.lat, target.lng);
+        if (dist > 1) {
+            Long interval = (System.currentTimeMillis() - prevTS);
+            bear = bearing(lat, lng, target.lat, target.lng);
+            updatePosition(bear, interval);
+        }
     }
 
     private Random rand;

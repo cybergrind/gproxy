@@ -1,1 +1,1 @@
-include ':app'
+include ':app', ':kpi.gproxy'

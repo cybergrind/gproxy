@@ -121,7 +121,6 @@ class TCPListener extends Thread {
                 locationUpdate(currLocation);
                 prevLocation = currLocation;
             }
-
             readFromServer();
 
             try {
