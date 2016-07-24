@@ -26,7 +26,7 @@ public class GPSMock extends Service {
     private final double defaultAlt = 220;
 
     protected long prevTS;
-    protected static double lat, lng, alt, nextAlt;
+    public static double lat, lng, alt, nextAlt;
     protected static float acc, bear, speed;
 
     protected Update target;
@@ -131,9 +131,6 @@ public class GPSMock extends Service {
                 location.setAccuracy(acc);
                 manager.setTestProviderLocation(PROVIDER, location);
                 bcast(location);
-                RpcMessage rpcMessage = new RpcMessage("test", null);
-                Log.d(TAG, "GENERATE: "+rpcMessage);
-                Log.d(TAG, "Update test location "+location.toString());
 
                 try {
                     Thread.sleep(500);
@@ -161,6 +158,10 @@ public class GPSMock extends Service {
             Long interval = (System.currentTimeMillis() - prevTS);
             bear = bearing(lat, lng, target.lat, target.lng);
             updatePosition(bear, interval);
+        } else {
+            acc = (float) ( (13.0 - 1.3) * rand.nextFloat() + 1.3);
+            speed = (float) (0.2 * rand.nextFloat());
+            prevTS = System.currentTimeMillis();
         }
     }
 

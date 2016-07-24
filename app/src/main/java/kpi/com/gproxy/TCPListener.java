@@ -146,6 +146,9 @@ class TCPListener extends Thread {
             case "targetUpdate":
                 sendUpdate(msg.location);
                 break;
+            case "forceUpdate":
+                GPSMock.lat = msg.location.lat;
+                GPSMock.lng = msg.location.lng;
             case "ack":
                 break;
             default:
@@ -168,9 +171,9 @@ class TCPListener extends Thread {
                 lastAck = System.currentTimeMillis();
                 Gson g = new Gson();
                 try {
+                    Log.i(TAG, "Got message2: " + s);
                     for (String i: s.split("\n")){
                         RpcMessage msg = g.fromJson(i, RpcMessage.class);
-                        Log.i(TAG, "Got message: " + i);
                         processMsg(msg);
                     }
 
